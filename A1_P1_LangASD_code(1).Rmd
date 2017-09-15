@@ -38,6 +38,15 @@ N.B. Create a GitHub repository for the Language Development in ASD set of assig
 Set the working directory (the directory with your data and code for these assignments):
 
 ```{r}
+setwd("C:\\Users\\ito\\Desktop\\UNI\\Working Directory\\3rd semester\\Assignment-1")
+
+library(data.table)
+library(ggplot2)
+library(stringr)
+library(tidyverse)
+library(zoo)
+library(plyr)
+library(dplyr)
 
 ```
 
@@ -47,13 +56,18 @@ Load the three data sets, after downloading them from dropbox and saving them in
 * Word data: https://www.dropbox.com/s/8ng1civpl2aux58/token_train.csv?dl=0
 
 ```{r}
+data_demo=read.csv("C:\\Users\\ito\\Desktop\\UNI\\Working Directory\\3rd semester\\Assignment-1\\demo_train(1).csv")
 
+data_LU=read.csv("C:\\Users\\ito\\Desktop\\UNI\\Working Directory\\3rd semester\\Assignment-1\\LU_train.csv")
+
+data_token=read.csv("C:\\Users\\ito\\Desktop\\UNI\\Working Directory\\3rd semester\\Assignment-1\\token_train.csv")
 ```
 
 Explore the 3 datasets (e.g. visualize them, summarize them, etc.). You will see that the data is messy, since the psychologists collected the demographic data, a linguist analyzed the length of utterance in May 2014 and the same linguist analyzed the words several months later. In particular:
 - the same variables might have different names (e.g. identifier of the child)
 - the same variables might report the values in different ways (e.g. visit)
 Welcome to real world of messy data :-)
+
 
 Before being able to combine the data sets we need to make sure the relevant variables have the same names and the same kind of values.
 
@@ -64,6 +78,12 @@ Tip: Look into the package data.table, or google "how to rename variables in R"
 
 
 ```{r}
+#rename(df, x=y), renames y to x
+data_demo=dplyr::rename(data_demo, SUBJ=Child.ID)
+data_demo=dplyr::rename(data_demo, VISIT=Visit)
+data_demo=dplyr::rename(data_demo, nonVerbalIQ=MullenRaw)
+data_demo=dplyr::rename(data_demo, verbalIQ=ExpressiveLangRaw)
+
 
 ```
 
@@ -71,7 +91,9 @@ Tip: Look into the package data.table, or google "how to rename variables in R"
 Tip: There is a package called stringr, which will be very handy for you also in future assignments. We will return to this package later, but for now use the str_extract () to extract only the number from the variable Visit in each data set. Tip: type ?str_extract() after loading the library, for examples of how to use it.
 
 ```{r}
-
+data_demo$VISIT=stringr::str_extract(data_demo$VISIT,"\\d")
+data_LU$VISIT=stringr::str_extract(data_LU$VISIT,"\\d")
+data_token$VISIT=stringr::str_extract(data_token$VISIT,"\\d")
 
 ```
 
@@ -87,7 +109,10 @@ Tip: You will have to do identical work for both data sets, so to save time on t
 
 
 ```{r}
-
+#gsub("x","y",df) replaces x with y in the dataframe. \\. is a general expression for punctuation
+data_demo$SUBJ=gsub("\\.","",data_demo$SUBJ)
+data_LU$SUBJ=gsub("\\.","",data_LU$SUBJ)
+data_token$SUBJ=gsub("\\.","",data_token$SUBJ)
 ```
 
 2d. Now that the nitty gritty details of the different data sets are fixed, we want to make a subset of each data set only containig the variables that we wish to use in the final data set.
@@ -106,6 +131,11 @@ It would be smart to rename the MullenRaw and ExpressiveLangRaw into something y
 
 ```{r}
 
+demo_sub=select_(data_demo,"SUBJ","VISIT","Ethnicity","Diagnosis","Gender","Age","ADOS","nonVerbalIQ","verbalIQ")
+
+LU_sub=select_(data_LU, "SUBJ", "VISIT", "MOT_MLU", "MOT_LUstd", "CHI_MLU", "CHI_LUstd")
+
+token_sub=select_(data_token, "SUBJ", "VISIT", "types_MOT", "types_CHI", "tokens_MOT", "tokens_CHI")
 
 ```
 
@@ -116,7 +146,8 @@ Tip: Merge only works for two data frames at the time.
 Tip: Check the number of observations in the datasets before and after merging. What is going on?
 
 ```{r}
-
+datamerge1 = merge(demo_sub,LU_sub,by= c("SUBJ", "VISIT"))
+datamerge2 = merge(datamerge1, token_sub, by=c("SUBJ", "VISIT"))
 ```
 
 Are we done yet?
@@ -128,8 +159,20 @@ Tip: one solution requires you to select only the rows corresponding to visit 1 
 Tip: subset() and select() might be useful.
 Tip: the final dataset should have as many rows as the the old one.
 
-
+ 
 ```{r}
+#For these five variables select rows where VISIT==1
+small_sub=subset(select_(datamerge2,"SUBJ", "VISIT", "ADOS", "nonVerbalIQ", "verbalIQ"),VISIT==1)
+
+#merge the dataframes. This gives double columns for the variables in question. Except for visit, columns with _old should be deleted and the new kept
+datamerge3=merge(small_sub,datamerge2,by= c("SUBJ"), suffixes = c("","_old"))
+
+#Remove unnecessary columns
+datamerge3=datamerge3[,!names(datamerge3) %in% c("VISIT","ADOS_old","nonVerbalIQ_old","verbalIQ_old")]
+
+#rename VISITS_old to Visit
+datamerge3=dplyr::rename(datamerge3, Visit=VISIT_old)
+
 
 ```
 
@@ -144,7 +187,15 @@ Tip: as.numeric() might be a useful function, but not alone.
 Tip: Google "how to rename levels in R".
 
 ```{r}
+#Make children anonymous
+datamerge3$SUBJ = as.numeric(as.factor(datamerge3$SUBJ))
 
+#Visit to numeric
+datamerge3$Visit = as.numeric(datamerge3$Visit)
+
+#Rename levels of gender and diagnosis
+datamerge3$Gender = mapvalues(datamerge3$Gender, c("1", "2"),c("F", "M"))
+datamerge3$Diagnosis = mapvalues(datamerge3$Diagnosis, c("A", "B"),c("ASD", "TD"))
 
 ```
 
@@ -152,7 +203,7 @@ Tip: Google "how to rename levels in R".
 Save the data set using into a csv file. Hint: look into write.csv()
 
 ```{r}
-
+write.csv(datamerge3, file = "finaldata.csv", row.names = FALSE)
 ```
 
 
@@ -168,7 +219,24 @@ List all kids who:
 3. have not completed all trials. Tip: Use pipes to solve this
 
 ```{r}
+#1 select not strictly necessary
+filter_1 = select_(datamerge3,"SUBJ","Visit","CHI_MLU") %>%
+  filter(CHI_MLU > 2.7)
 
+unique(filter_1$SUBJ)
+
+#2
+filter_2 = select_(datamerge3,"SUBJ","Visit","CHI_MLU") %>% 
+  filter(Visit == 1, CHI_MLU < 1.5)
+
+unique(filter_2$SUBJ)
+
+#3
+filter_3=select_(datamerge3,"SUBJ","Visit")%>%
+  group_by(SUBJ) %>%
+  filter(max(Visit) < 6)
+
+unique(filter_3$SUBJ)
 
 ```
 
@@ -179,7 +247,15 @@ USING ARRANGE
 2. Sort kids to find the kid who produced the least amount of words on the 1st visit.
 
 ```{r}
+#1
+select_(datamerge3,"SUBJ","Visit","CHI_MLU") %>%
+  filter(Visit == 6) %>%
+  arrange(desc(CHI_MLU))
 
+#2
+select_(datamerge3,"SUBJ","Visit","CHI_MLU") %>%
+  filter( Visit == 1) %>%
+  arrange(CHI_MLU)
 
 ```
 
@@ -189,6 +265,14 @@ USING SELECT
 2. What happens if you include the name of a variable multiple times in a select() call?
 
 ```{r}
+#1
+ASD_data=select_(datamerge3,"SUBJ","Diagnosis","CHI_MLU","tokens_CHI") %>%
+  filter(Diagnosis=="ASD")
+
+#2
+select_data2 = datamerge3 %>%
+  filter(Diagnosis == "ASD")%>%
+  select(Diagnosis, Diagnosis,CHI_MLU, tokens_CHI)
 
 ```
 

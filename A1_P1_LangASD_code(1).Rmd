@@ -269,6 +269,7 @@ USING SELECT
 ASD_data=select_(datamerge3,"SUBJ","Diagnosis","CHI_MLU","tokens_CHI") %>%
   filter(Diagnosis=="ASD")
 
+
 #2
 select_data2 = datamerge3 %>%
   filter(Diagnosis == "ASD")%>%
@@ -283,6 +284,16 @@ USING MUTATE, SUMMARISE and PIPES
 3. The solution to task above enables us to assess the average amount of words produced by each child. Why don't we just use these average values to describe the language production of the children? What is the advantage of keeping all the data?
 
 ```{r}
+#1
+datamerge3 = mutate(datamerge3, GrandAvg = mean(tokens_CHI))
+
+#2
+ChiAvg_AcrossVisits = select_(datamerge3, "SUBJ", "tokens_CHI") %>%
+  group_by(SUBJ)%>%
+  summarise(ChiAvgWord = mean(tokens_CHI)) %>%
+  merge(datamerge3)
+
+#3 when we're interested in development, the mean doesn't tell us much
 
 
 ```

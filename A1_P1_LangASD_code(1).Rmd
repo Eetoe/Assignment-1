@@ -81,7 +81,7 @@ Tip: Look into the package data.table, or google "how to rename variables in R"
 #rename(df, x=y), renames y to x
 data_demo=dplyr::rename(data_demo, SUBJ=Child.ID)
 data_demo=dplyr::rename(data_demo, VISIT=Visit)
-data_demo=dplyr::rename(data_demo, nonVerbalIQ=MullenRaw)
+data_demo=dplyr::rename(data_demo, nonverbalIQ=MullenRaw)
 data_demo=dplyr::rename(data_demo, verbalIQ=ExpressiveLangRaw)
 
 
@@ -131,7 +131,7 @@ It would be smart to rename the MullenRaw and ExpressiveLangRaw into something y
 
 ```{r}
 
-demo_sub=select_(data_demo,"SUBJ","VISIT","Ethnicity","Diagnosis","Gender","Age","ADOS","nonVerbalIQ","verbalIQ")
+demo_sub=select_(data_demo,"SUBJ","VISIT","Ethnicity","Diagnosis","Gender","Age","ADOS","nonverbalIQ","verbalIQ")
 
 LU_sub=select_(data_LU, "SUBJ", "VISIT", "MOT_MLU", "MOT_LUstd", "CHI_MLU", "CHI_LUstd")
 
@@ -162,16 +162,16 @@ Tip: the final dataset should have as many rows as the the old one.
  
 ```{r}
 #For these five variables select rows where VISIT==1
-small_sub=subset(select_(datamerge2,"SUBJ", "VISIT", "ADOS", "nonVerbalIQ", "verbalIQ"),VISIT==1)
+small_sub=subset(select_(datamerge2,"SUBJ", "VISIT", "ADOS", "nonverbalIQ", "verbalIQ"),VISIT==1)
 
 #merge the dataframes. This gives double columns for the variables in question. Except for visit, columns with _old should be deleted and the new kept
 datamerge3=merge(small_sub,datamerge2,by= c("SUBJ"), suffixes = c("","_old"))
 
 #Remove unnecessary columns
-datamerge3=datamerge3[,!names(datamerge3) %in% c("VISIT","ADOS_old","nonVerbalIQ_old","verbalIQ_old")]
+datamerge3=datamerge3[,!names(datamerge3) %in% c("VISIT","ADOS_old","nonverbalIQ_old","verbalIQ_old")]
 
 #rename VISITS_old to Visit
-datamerge3=dplyr::rename(datamerge3, Visit=VISIT_old)
+datamerge3=dplyr::rename(datamerge3, VISIT=VISIT_old)
 
 
 ```
@@ -220,21 +220,21 @@ List all kids who:
 
 ```{r}
 #1 select not strictly necessary
-filter_1 = select_(datamerge3,"SUBJ","Visit","CHI_MLU") %>%
+filter_1 = select_(datamerge3,"SUBJ","VISIT","CHI_MLU") %>%
   filter(CHI_MLU > 2.7)
 
 unique(filter_1$SUBJ)
 
 #2
-filter_2 = select_(datamerge3,"SUBJ","Visit","CHI_MLU") %>% 
-  filter(Visit == 1, CHI_MLU < 1.5)
+filter_2 = select_(datamerge3,"SUBJ","VISIT","CHI_MLU") %>% 
+  filter(VISIT == 1, CHI_MLU < 1.5)
 
 unique(filter_2$SUBJ)
 
 #3
-filter_3=select_(datamerge3,"SUBJ","Visit")%>%
+filter_3=select_(datamerge3,"SUBJ","VISIT")%>%
   group_by(SUBJ) %>%
-  filter(max(Visit) < 6)
+  filter(max(VISIT) < 6)
 
 unique(filter_3$SUBJ)
 
@@ -248,13 +248,13 @@ USING ARRANGE
 
 ```{r}
 #1
-select_(datamerge3,"SUBJ","Visit","CHI_MLU") %>%
-  filter(Visit == 6) %>%
+select_(datamerge3,"SUBJ","VISIT","CHI_MLU") %>%
+  filter(VISIT == 6) %>%
   arrange(desc(CHI_MLU))
 
 #2
-select_(datamerge3,"SUBJ","Visit","CHI_MLU") %>%
-  filter( Visit == 1) %>%
+select_(datamerge3,"SUBJ","VISIT","CHI_MLU") %>%
+  filter( VISIT == 1) %>%
   arrange(CHI_MLU)
 
 ```

@@ -36,12 +36,22 @@ N.B. The following lines are a summary of the questions to be answered, the step
 
 Describe the participant samples in the dataset (e.g. by diagnosis, age, etc.). Do you think the two groups are well balanced? If not, what do you think was the reason?
 
-[HERE GOES YOUR ANSWER]
+[ANSWER]
+
+The variable Diagnosis is not significantly predicted by the variables Gender (beta = 0.3 se = 0.29, z-value = 1.12 , p > 0.05) or nonverbalIQ, meaning that the groups are well balanced on these data (beta = 0.9, se = 0.4887, t-value = -1.825 p > 0.05). (what does that really mean?)
+
+When looking at Age, ASD children are on average 12.7 months older than TD children, meaning that the groups are significantly different by this variable. (beta = -12.7, se = 0.87, t-value = -14.41, p < 0.05). (what does that really mean?)
+
+When looking at verbalIQ, TD children scores significantly higher than ASD children (beta = 2.79, se = 0.66, t-value = 4.21, p < 0.05), however, when plotting the variable, it becomes clear that ASD children are roughly divided into two groups. One group that score higher than TD children and one that scores lower. 
+
+
 
 ### Exercise 2) Children learning language: the effects of time and ASD
 Describe linguistic development in TD and ASD children in terms of Mean Length of Utterance (MLU)?
 
-[HERE GOES YOUR ANSWER]
+[ANSWER]
+
+
 
 ### Exercise 3) Child directed speech as a moving target
 Describe how parental use of language changes over time in terms of MLU. What do you think is going on?
@@ -78,6 +88,7 @@ Load necessary libraries : what will you need?
 - e.g. mixed effects models
 
 ```{r Load Libraries}
+
 library(data.table)
 library(ggplot2)
 library(stringr)
@@ -85,9 +96,10 @@ library(tidyverse)
 library(zoo)
 library(plyr)
 library(dplyr)
-library(lmtest)
+library(lmerTest)
 library(lme4)
 library(MuMIn)
+
 ```
 
 ### Define your working directory and load the data
@@ -100,7 +112,7 @@ library(MuMIn)
 ```{r Load Data}
 
 getwd()
-locpath="C:\\Users\\ito\\Desktop\\UNI\\Working Directory\\3rd semester\\Assignment-1"
+locpath= "C:/Users/ito/Desktop/UNI/Working Directory/3rd semester/Assignment-1"
 setwd(locpath)
 data = read.csv("finaldata.csv")
 
@@ -118,13 +130,15 @@ Describe the characteristics of the two groups of participants and whether the t
 ggplot(data, aes(Diagnosis,CHI_MLU))+geom_boxplot()
 ggplot(data, aes(Diagnosis,CHI_MLU))+geom_violin()
 ggplot(data, aes(Diagnosis, verbalIQ))+geom_boxplot()
-ggplot(data, aes(Visit,CHI_MLU,color=Diagnosis,group=SUBJ))+geom_line()
+ggplot(data, aes(Diagnosis, verbalIQ))+geom_violin()
+ggplot(data, aes(VISIT,CHI_MLU,color=Diagnosis,group=SUBJ))+geom_line()
 
-glm(Gender~Diagnosis,data, family = binomial)%>%summary() #Gender not significant
+glm(Gender~Diagnosis,data, family = binomial)%>%summary() #Gender not significantly different
 lm(Age~Diagnosis,data)%>%summary() #ASD children about a year older than TD Children
 lm(verbalIQ~Diagnosis,data)%>%summary() #Children supposed to be matched by verbalIQ, but no...
-lm(nonVerbalIQ~Diagnosis,data)%>%summary() #nonverbal IQ insignificant
-lm(CHI_MLU)
+lm(nonverbalIQ~Diagnosis,data)%>%summary() #nonverbal IQ insignificant
+
+
 
 ```
 
@@ -141,13 +155,17 @@ Remember to plot the data first and then to run a statistical test.
 - Which variable(s) should be included as random factors?
 
 ```{r}
-m1=lmer(CHI_MLU~Visit*Diagnosis+(1+Visit|SUBJ), data)
+m1=lmer(CHI_MLU~Diagnosis+Gender+VISIT+(1+SUBJ|VISIT), data)
 ```
 
 How would you evaluate whether the model is a good model?
 
 ```{r}
 summary(m1)
+r.squaredGLMM(m1)
+
+#m.null=lmer(CHI_MLU~Gender+(1+SUBJ|Visit), data)
+#anova(m1,m.null)
 ```
 
 Not too good, right? Let's check whether a growth curve model is better.
@@ -155,6 +173,17 @@ Remember: a growth curve model assesses whether changes in time can be described
 First build the different models, then compare them to see which one is better
 
 ```{r}
+data$VISIT1 = data$VISIT^2
+m2= lmer(CHI_MLU~Diagnosis+Gender+VISIT+VISIT1+(1+SUBJ|VISIT), data)
+
+summary(m2)
+r.squaredGLMM(m2)
+       
+data$VISIT2 = data$VISIT^3
+m3 = lmer(CHI_MLU~Diagnosis+Gender+VISIT+VISIT1+VISIT2+(1+SUBJ|VISIT), data)
+
+summary(m3)
+r.squaredGLMM(m3)
 
 ```
 
@@ -172,6 +201,11 @@ Linguistic development of children MLU is affected by ... [COMPLETE]
 ### Hypothesis: Parental MLU changes: i) over time, ii) according to diagnosis
 
 ```{r}
+ggplot(data, aes(VISIT,MOT_MLU,color=Diagnosis,group=SUBJ))+geom_line()
+m4=lmer(MOT_MLU~VISIT+Diagnosis+(1+SUBJ|VISIT),data)
+summary(m4)
+r.squaredGLMM(m4)
+
 
 ```
 
@@ -183,6 +217,20 @@ Your task now is to figure out how to best describe the children linguistic traj
 
 
 ```{r}
+#Linguistic data are probably correlated with diagnosis and MLU (outcome), so one might get punished for including them
+m5=lmer(CHI_MLU~verbalIQ+(1+SUBJ|VISIT),data = data)
+summary(m5)
+r.squaredGLMM(m5)
+
+# We choose ADOS to add the posibility of dividing ASD kids on a spectrum. We do not include ethnicity. 
+# We do not include Age.
+# We add MOT_MLU to add the linguistic environment of the kid
+
+
+m6=lmer(CHI_MLU~Diagnosis*VISIT+Gender+ADOS+MOT_MLU+(1+SUBJ|VISIT),data = data)
+summary(m6)
+r.squaredGLMM(m6)
+
 
 ```
 
